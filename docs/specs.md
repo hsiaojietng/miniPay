@@ -56,9 +56,8 @@ Deposit Amount
 Transfer Amount
 
 1. Given Alice has $100, Bob has $0. When Alice transfers $20 to Bob, then Alice will have $80 left and Bob will have $20. Also, the sum of entries will be 0
-2. Given Alice has $100, when Alice transfers $20 to herself, then Alice will have $100 left, also the sum of entries will be 0
-3. Given Alice has $0, when Alice transfers $0, then system will prompt transfer has to be greater than 0
-4. Given Alice has $20, when Alice transfers $30, then system will prompt account balance is not enough
+2. Given Alice has $0, when Alice transfers $0, then system will prompt transfer has to be greater than 0
+3. Given Alice has $20, when Alice transfers $30, then system will prompt account balance is not enough
 
 View Account Balance
 
