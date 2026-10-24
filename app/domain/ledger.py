@@ -6,7 +6,9 @@ from dataclasses import dataclass
 from app.domain.errors import (
     AccountAlreadyExists,
     AccountNotFound,
+    InsufficientFunds,
     InvalidAmount,
+    SameAccountTransfer,
     UnsupportedCurrency,
 )
 
@@ -47,8 +49,18 @@ class Ledger:
         self._entries.append(Entry(transfer_id, account_id, amount))
         return transfer_id
 
-    def transfer(self, from_account_id, to_account_id, amount, currency="SGD"):
-        raise NotImplementedError
+    def transfer(self, from_account_id, to_account_id, amount, currency=CURRENCY):
+        self._check_currency(currency)
+        self._check_amount(amount)
+        self._check_account_exists(from_account_id)
+        self._check_account_exists(to_account_id)
+        self._check_self_transfer(from_account_id, to_account_id)
+        self._check_sufficient_funds(from_account_id, amount)
+
+        transfer_id = str(uuid.uuid4())
+        self._entries.append(Entry(transfer_id, from_account_id, -amount))
+        self._entries.append(Entry(transfer_id, to_account_id, amount))
+        return transfer_id
 
     def reverse(self, transfer_id):
         raise NotImplementedError
@@ -76,3 +88,17 @@ class Ledger:
     def _check_account_exists(self, account_id):
         if account_id not in self._holder_by_account_id:
             raise AccountNotFound(f"Account {account_id} does not exist")
+
+    def _check_self_transfer(self, from_account_id, to_account_id):
+        if from_account_id == to_account_id:
+            raise SameAccountTransfer(f"Cannot transfer to the same account {to_account_id}")
+
+    def _check_sufficient_funds(self, account_id, amount):
+        available = self._balance_of(account_id)
+        if amount > available:
+            raise InsufficientFunds(
+                f"Account {account_id} has {available}, cannot transfer {amount}"
+            )
+
+    def _balance_of(self, account_id):
+        return sum(e.amount for e in self._entries if e.account_id == account_id)
