@@ -41,6 +41,12 @@ def balance_of(ledger, account_id, holder):
     return ledger.balance(account_id, requested_by=holder)
 
 
+def cash_balance(ledger):
+    return sum(
+        e.amount for e in ledger.all_entries() if e.account_id == ledger.cash_account_id
+    )
+
+
 # Rule 1: Transfer/deposit amount must be greater than 0
 
 @pytest.mark.parametrize("amount", [0, -1, -10000])
@@ -278,3 +284,111 @@ def test_partial_reversal_is_not_possible(ledger, alice, bob):
 
     assert balance_of(ledger, alice, "alice") == 7000
     assert balance_of(ledger, bob, "bob") == 3000
+
+
+# Function: open_account
+
+def test_open_account_returns_account_id(ledger):
+    account_id = ledger.open_account("carol")
+
+    assert isinstance(account_id, str)
+    assert account_id
+
+
+def test_open_account_gives_every_holder_a_unique_id(ledger):
+    account_ids = {ledger.open_account(holder) for holder in ["carol", "dave", "erin"]}
+
+    assert len(account_ids) == 3
+
+
+def test_new_account_has_empty_statement(ledger):
+    account_id = ledger.open_account("carol")
+
+    assert list(ledger.statement(account_id, requested_by="carol")) == []
+
+
+def test_failed_duplicate_open_leaves_existing_account_untouched(ledger, alice):
+    with pytest.raises(AccountAlreadyExists):
+        ledger.open_account("alice")
+
+    assert balance_of(ledger, alice, "alice") == 10000
+
+
+# Function: deposit
+
+def test_deposit_adds_to_balance_and_takes_from_cash(ledger):
+    account_id = ledger.open_account("carol")
+    ledger.deposit(account_id, 1000)
+    cash_before = cash_balance(ledger)
+
+    ledger.deposit(account_id, 3000)
+
+    assert balance_of(ledger, account_id, "carol") == 4000
+    assert cash_balance(ledger) == cash_before - 3000
+
+
+def test_deposits_accumulate(ledger, bob):
+    ledger.deposit(bob, 1000)
+    ledger.deposit(bob, 250)
+    ledger.deposit(bob, 1)
+
+    assert balance_of(ledger, bob, "bob") == 1251
+
+
+def test_deposit_returns_unique_transfer_id(ledger, bob):
+    first = ledger.deposit(bob, 1000)
+    second = ledger.deposit(bob, 1000)
+
+    assert first != second
+
+
+def test_deposit_does_not_affect_other_accounts(ledger, alice, bob):
+    ledger.deposit(bob, 3000)
+
+    assert balance_of(ledger, alice, "alice") == 10000
+
+
+def test_deposit_defaults_to_sgd(ledger, bob):
+    ledger.deposit(bob, 1000)
+
+    assert balance_of(ledger, bob, "bob") == 1000
+
+
+def test_deposit_shows_on_statement(ledger, bob):
+    ledger.deposit(bob, 3000)
+
+    assert [line.amount for line in ledger.statement(bob, requested_by="bob")] == [3000]
+
+
+# Function: balance
+
+def test_balance_shows_current_amount(ledger):
+    account_id = ledger.open_account("carol")
+    ledger.deposit(account_id, 3000)
+
+    assert ledger.balance(account_id, requested_by="carol") == 3000
+
+
+def test_balance_is_integer_cents(ledger, alice):
+    assert isinstance(ledger.balance(alice, requested_by="alice"), int)
+
+
+def test_balance_reflects_money_in_and_out(ledger, alice, bob):
+    ledger.transfer(alice, bob, 2000)
+    ledger.transfer(bob, alice, 500)
+
+    assert balance_of(ledger, alice, "alice") == 8500
+    assert balance_of(ledger, bob, "bob") == 1500
+
+
+def test_balance_of_unknown_account_is_rejected(ledger):
+    with pytest.raises(AccountNotFound):
+        ledger.balance("does-not-exist", requested_by="alice")
+
+
+def test_viewing_balance_does_not_change_it(ledger, alice):
+    balance_of(ledger, alice, "alice")
+    balance_of(ledger, alice, "alice")
+
+    assert balance_of(ledger, alice, "alice") == 10000
+    assert sum(e.amount for e in ledger.all_entries()) == 0
