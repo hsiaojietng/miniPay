@@ -4,6 +4,8 @@ All amounts are integer cents in SGD. Deposits are funded from the special CASH
 account, so the sum of every entry in the ledger is always 0.
 """
 
+import random
+
 import pytest
 
 from app.domain.errors import (
@@ -12,6 +14,7 @@ from app.domain.errors import (
     AccountNotFound,
     InsufficientFunds,
     InvalidAmount,
+    LedgerError,
     SameAccountTransfer,
     TransferAlreadyReversed,
     TransferNotFound,
@@ -392,3 +395,56 @@ def test_viewing_balance_does_not_change_it(ledger, alice):
 
     assert balance_of(ledger, alice, "alice") == 10000
     assert sum(e.amount for e in ledger.all_entries()) == 0
+
+
+# Invariants: after any sequence of operations, the sum of all entries is 0
+# and no ordinary account (anything but CASH) is negative
+
+INVARIANT_SEED = 20261027
+INVARIANT_STEPS = 500
+
+
+def test_random_operations_preserve_invariants(ledger):
+    rng = random.Random(INVARIANT_SEED)
+    holder_by_account_id = {}
+    transfer_ids = []
+
+    for step in range(INVARIANT_STEPS):
+        account_ids = list(holder_by_account_id)
+        op = rng.choice(["open", "deposit", "transfer", "reverse"])
+        if not account_ids:
+            op = "open"
+        elif op == "reverse" and not transfer_ids:
+            op = "transfer"
+
+        # Inputs deliberately include invalid values (duplicate holders, amounts <= 0,
+        # self-transfers, overdrafts, repeat reversals) so rejections are exercised too.
+        if op == "open":
+            args = (f"holder-{rng.randrange(30)}",)
+        elif op == "deposit":
+            args = (rng.choice(account_ids), rng.randint(-100, 10000))
+        elif op == "transfer":
+            args = (rng.choice(account_ids), rng.choice(account_ids), rng.randint(-100, 20000))
+        else:
+            args = (rng.choice(transfer_ids),)
+        context = f"seed={INVARIANT_SEED} step={step} op={op}{args}"
+
+        try:
+            if op == "open":
+                holder_by_account_id[ledger.open_account(*args)] = args[0]
+            elif op == "deposit":
+                ledger.deposit(*args)
+            elif op == "transfer":
+                transfer_ids.append(ledger.transfer(*args))
+            else:
+                ledger.reverse(*args)
+        except LedgerError:
+            pass  # a rejected operation is a valid outcome; the invariants must still hold
+        except Exception as exc:
+            pytest.fail(f"{context} raised unexpected {exc!r}")
+
+        assert sum(e.amount for e in ledger.all_entries()) == 0, context
+        for account_id, holder in holder_by_account_id.items():
+            assert ledger.balance(account_id, requested_by=holder) >= 0, (
+                f"{context} left {holder} negative"
+            )
