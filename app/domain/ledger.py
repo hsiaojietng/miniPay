@@ -4,11 +4,14 @@ import uuid
 from dataclasses import dataclass
 
 from app.domain.errors import (
+    AccessDenied,
     AccountAlreadyExists,
     AccountNotFound,
     InsufficientFunds,
     InvalidAmount,
     SameAccountTransfer,
+    TransferAlreadyReversed,
+    TransferNotFound,
     UnsupportedCurrency,
 )
 
@@ -22,6 +25,13 @@ class Entry:
     amount: int
 
 
+@dataclass(frozen=True)
+class Transfer:
+    from_account_id: str
+    to_account_id: str
+    amount: int
+
+
 class Ledger:
     cash_account_id = "CASH"
 
@@ -29,6 +39,8 @@ class Ledger:
         self._holder_by_account_id = {}
         self._account_id_by_holder = {}
         self._entries = []
+        self._transfers = {}
+        self._reversed_transfer_ids = set()
 
     def open_account(self, holder):
         if holder in self._account_id_by_holder:
@@ -60,13 +72,27 @@ class Ledger:
         transfer_id = str(uuid.uuid4())
         self._entries.append(Entry(transfer_id, from_account_id, -amount))
         self._entries.append(Entry(transfer_id, to_account_id, amount))
+        self._transfers[transfer_id] = Transfer(from_account_id, to_account_id, amount)
         return transfer_id
 
     def reverse(self, transfer_id):
-        raise NotImplementedError
+        original = self._transfers.get(transfer_id)
+        if original is None:
+            raise TransferNotFound(f"Transfer {transfer_id} does not exist")
+        if transfer_id in self._reversed_transfer_ids:
+            raise TransferAlreadyReversed(f"Transfer {transfer_id} has already been reversed")
+        self._check_sufficient_funds(original.to_account_id, original.amount)
+
+        reversal_id = str(uuid.uuid4())
+        self._entries.append(Entry(reversal_id, original.to_account_id, -original.amount))
+        self._entries.append(Entry(reversal_id, original.from_account_id, original.amount))
+        self._reversed_transfer_ids.add(transfer_id)
+        return reversal_id
 
     def balance(self, account_id, requested_by):
-        raise NotImplementedError
+        self._check_account_exists(account_id)
+        self._check_holder(account_id, requested_by)
+        return self._balance_of(account_id)
 
     def statement(self, account_id, requested_by):
         raise NotImplementedError
@@ -88,6 +114,10 @@ class Ledger:
     def _check_account_exists(self, account_id):
         if account_id not in self._holder_by_account_id:
             raise AccountNotFound(f"Account {account_id} does not exist")
+
+    def _check_holder(self, account_id, requested_by):
+        if self._holder_by_account_id[account_id] != requested_by:
+            raise AccessDenied(f"{requested_by} cannot view account {account_id}")
 
     def _check_self_transfer(self, from_account_id, to_account_id):
         if from_account_id == to_account_id:
