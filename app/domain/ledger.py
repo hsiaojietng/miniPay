@@ -26,6 +26,13 @@ class Entry:
 
 
 @dataclass(frozen=True)
+class StatementLine:
+    transfer_id: str
+    amount: int
+    balance_after: int
+
+
+@dataclass(frozen=True)
 class Transfer:
     from_account_id: str
     to_account_id: str
@@ -95,7 +102,16 @@ class Ledger:
         return self._balance_of(account_id)
 
     def statement(self, account_id, requested_by):
-        raise NotImplementedError
+        self._check_account_exists(account_id)
+        self._check_holder(account_id, requested_by)
+
+        lines = []
+        running_balance = 0
+        for e in self._entries:
+            if e.account_id == account_id:
+                running_balance += e.amount
+                lines.append(StatementLine(e.transfer_id, e.amount, running_balance))
+        return lines
 
     def entries_for(self, transfer_id):
         return [e for e in self._entries if e.transfer_id == transfer_id]
