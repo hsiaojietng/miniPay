@@ -98,7 +98,7 @@ class Ledger:
         raise NotImplementedError
 
     def entries_for(self, transfer_id):
-        raise NotImplementedError
+        return [e for e in self._entries if e.transfer_id == transfer_id]
 
     def all_entries(self):
         raise NotImplementedError
