@@ -101,7 +101,7 @@ class Ledger:
         return [e for e in self._entries if e.transfer_id == transfer_id]
 
     def all_entries(self):
-        raise NotImplementedError
+        return list(self._entries)
 
     def _check_currency(self, currency):
         if currency != CURRENCY:
