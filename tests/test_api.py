@@ -1,7 +1,7 @@
-"""End-to-end tests for the v1 HTTP routes (docs/specs.md, "Acceptance Criteria").
+"""End-to-end tests for the v1 HTTP routes.
 
-Requests go through FastAPI to the real services and Postgres. The app's connection is swapped
-for the test connection, so everything is rolled back afterwards.
+Requests go through FastAPI to the real services and commit to the minipay_test database,
+which is emptied before each test (see conftest.py).
 """
 
 import uuid
@@ -12,13 +12,6 @@ from fastapi.testclient import TestClient
 
 from app.api.routes import get_conn
 from app.main import app
-
-
-@pytest.fixture
-def client(conn):
-    app.dependency_overrides[get_conn] = lambda: conn
-    yield TestClient(app)
-    app.dependency_overrides.clear()
 
 
 def open_account(client, holder, deposit_cents=0):
