@@ -6,6 +6,7 @@ for the test connection, so everything is rolled back afterwards.
 
 import uuid
 
+import psycopg
 import pytest
 from fastapi.testclient import TestClient
 
@@ -221,3 +222,55 @@ def test_statement_of_another_holders_account_is_denied(client, alice):
     response = client.get(f"/v1/accounts/{alice}/statement", headers={"X-Holder": "bob"})
 
     assert response.status_code == 403
+
+
+# Error shape: every error is {code, message}
+
+def assert_error(response, status_code, code):
+    assert response.status_code == status_code
+    body = response.json()
+    assert set(body) == {"code", "message"}
+    assert body["code"] == code
+    assert isinstance(body["message"], str) and body["message"]
+
+
+def test_insufficient_funds_is_422(client, alice, bob):
+    assert_error(post_transfer(client, alice, bob, 10001), 422, "insufficient_funds")
+
+
+def test_same_account_transfer_is_422(client, alice):
+    assert_error(post_transfer(client, alice, alice, 100), 422, "same_account_transfer")
+
+
+def test_unknown_account_is_404(client, alice):
+    assert_error(post_transfer(client, alice, str(uuid.uuid4()), 100), 404, "account_not_found")
+
+
+def test_invalid_amount_is_422(client, alice, bob):
+    assert_error(post_transfer(client, alice, bob, 0), 422, "invalid_amount")
+
+
+def test_other_validation_failure_is_422(client, alice, bob):
+    response = post_transfer(client, alice, bob, 100, idempotency_kye="k-1")
+
+    assert_error(response, 422, "validation_error")
+    assert "idempotency_kye" in response.json()["message"]
+
+
+def test_unknown_route_is_404(client):
+    assert_error(client.get("/v1/nowhere"), 404, "not_found")
+
+
+def test_unexpected_error_is_500_without_internal_details(database):
+    # A closed connection makes the first query fail with an error no handler expects.
+    broken = psycopg.connect(database)
+    broken.close()
+    app.dependency_overrides[get_conn] = lambda: broken
+    try:
+        client = TestClient(app, raise_server_exceptions=False)
+        response = client.get(f"/v1/accounts/{uuid.uuid4()}/balance", headers={"X-Holder": "alice"})
+    finally:
+        app.dependency_overrides.clear()
+
+    assert_error(response, 500, "internal_error")
+    assert response.json()["message"] == "Internal server error"
