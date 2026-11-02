@@ -21,8 +21,8 @@ def database():
 
 @pytest.fixture
 def conn(database):
-    # Everything a test writes stays in this connection's open transaction and is rolled back.
-    connection = psycopg.connect(database)
-    yield connection
-    connection.rollback()
-    connection.close()
+    # Open the outer transaction up front: a service's conn.transaction() then becomes a savepoint.
+    # Without it, a service call as the first statement would BEGIN and COMMIT for real.
+    with psycopg.connect(database) as connection:
+        with connection.transaction(force_rollback=True):
+            yield connection

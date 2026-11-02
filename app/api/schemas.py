@@ -25,7 +25,7 @@ class OpenAccountRequest(RequestModel):
 
 
 class DepositRequest(RequestModel):
-    account_id: UUID
+    # The account comes from the path, /v1/accounts/{account_id}/deposits.
     # strict: reject 10.0, "1000" and true rather than coercing them into cents.
     amount_cents: int = Field(gt=0, le=MAX_AMOUNT_CENTS, strict=True)
     currency: str = CURRENCY

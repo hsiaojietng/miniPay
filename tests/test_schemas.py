@@ -115,10 +115,9 @@ def test_transfer_leaves_business_rules_to_the_service():
 
 def test_valid_deposit_parses():
     request = DepositRequest.model_validate_json(
-        json.dumps({"account_id": ALICE, "amount_cents": 3000})
+        json.dumps({"amount_cents": 3000})
     )
 
-    assert request.account_id == uuid.UUID(ALICE)
     assert request.amount_cents == 3000
     assert request.currency == "SGD"
 
@@ -127,15 +126,23 @@ def test_valid_deposit_parses():
 def test_deposit_rejects_invalid_amount(amount):
     with pytest.raises(ValidationError):
         DepositRequest.model_validate_json(
-            json.dumps({"account_id": ALICE, "amount_cents": amount})
+            json.dumps({"amount_cents": amount})
         )
 
 
 def test_deposit_rejects_unknown_field():
     with pytest.raises(ValidationError) as exc_info:
         DepositRequest.model_validate_json(
-            json.dumps({"account_id": ALICE, "amount_cents": 3000, "amont_cents": 1})
+            json.dumps({"amount_cents": 3000, "amont_cents": 1})
         )
+
+    assert "extra_forbidden" in error_types(exc_info)
+
+
+def test_deposit_rejects_account_id_in_body():
+    # The account comes from the URL; a second copy in the body could disagree with it.
+    with pytest.raises(ValidationError) as exc_info:
+        DepositRequest.model_validate_json(json.dumps({"account_id": ALICE, "amount_cents": 3000}))
 
     assert "extra_forbidden" in error_types(exc_info)
 
