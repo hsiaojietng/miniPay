@@ -6,11 +6,9 @@ Each test runs inside an outer transaction that is rolled back, so nothing is le
 
 import uuid
 
-import psycopg
 import pytest
 
 from app.db import repo
-from app.db.connection import DATABASE_URL
 from app.domain.errors import (
     AccountNotFound,
     InsufficientFunds,
@@ -20,27 +18,6 @@ from app.domain.errors import (
 )
 from app.domain.ledger import Entry
 from app.services.transfer_service import transfer
-
-
-@pytest.fixture(scope="module")
-def database():
-    # Probe once per module so a missing database costs one connect timeout, not one per test.
-    try:
-        with psycopg.connect(DATABASE_URL, connect_timeout=3) as probe:
-            probe.execute("SELECT 1 FROM ledger_entries LIMIT 1")
-    except psycopg.OperationalError as e:
-        pytest.skip(f"Postgres not reachable: {e}")
-    except psycopg.errors.UndefinedTable:
-        pytest.skip("Schema not applied (docs/schema.sql)")
-    return DATABASE_URL
-
-
-@pytest.fixture
-def conn(database):
-    connection = psycopg.connect(database)
-    yield connection
-    connection.rollback()
-    connection.close()
 
 
 @pytest.fixture

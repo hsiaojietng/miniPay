@@ -34,6 +34,18 @@ def insert_account(conn, owner_name, currency="SGD"):
     return str(account_id)
 
 
+def get_or_insert_account(conn, owner_name, currency="SGD"):
+    # ON CONFLICT relies on accounts.owner_name being UNIQUE, so concurrent callers share one row.
+    conn.execute(
+        """
+        INSERT INTO accounts (id, owner_name, currency) VALUES (%s, %s, %s)
+        ON CONFLICT (owner_name) DO NOTHING
+        """,
+        (uuid.uuid4(), owner_name, currency),
+    )
+    return get_account_by_owner(conn, owner_name)
+
+
 def get_account(conn, account_id):
     row = conn.execute(
         "SELECT id, owner_name, currency FROM accounts WHERE id = %s",

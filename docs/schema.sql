@@ -1,6 +1,6 @@
 CREATE TABLE accounts (
   id UUID PRIMARY KEY,
-  owner_name TEXT NOT NULL,
+  owner_name TEXT NOT NULL UNIQUE,
   currency CHAR(3) NOT NULL DEFAULT 'SGD',
   created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
