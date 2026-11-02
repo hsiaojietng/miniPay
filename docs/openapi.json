@@ -1,0 +1,571 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "miniPay",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/v1/accounts": {
+      "post": {
+        "summary": "Open Account",
+        "operationId": "open_account_v1_accounts_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OpenAccountRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AccountResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The holder already has an account: account_already_exists",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid input (invalid_amount, validation_error) or a broken business rule (insufficient_funds, same_account_transfer, unsupported_currency)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error: internal_error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/accounts/{account_id}/deposits": {
+      "post": {
+        "summary": "Deposit",
+        "operationId": "deposit_v1_accounts__account_id__deposits_post",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Account Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DepositRequest"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The account does not exist: account_not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid input (invalid_amount, validation_error) or a broken business rule (insufficient_funds, same_account_transfer, unsupported_currency)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error: internal_error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/transfers": {
+      "post": {
+        "summary": "Create Transfer",
+        "operationId": "create_transfer_v1_transfers_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TransferRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TransferResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The account does not exist: account_not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid input (invalid_amount, validation_error) or a broken business rule (insufficient_funds, same_account_transfer, unsupported_currency)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error: internal_error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/accounts/{account_id}/balance": {
+      "get": {
+        "summary": "Balance",
+        "operationId": "balance_v1_accounts__account_id__balance_get",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Account Id"
+            }
+          },
+          {
+            "name": "X-Holder",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Holder"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BalanceResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The X-Holder is not the account's holder: access_denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The account does not exist: account_not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid input (invalid_amount, validation_error) or a broken business rule (insufficient_funds, same_account_transfer, unsupported_currency)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error: internal_error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/v1/accounts/{account_id}/statement": {
+      "get": {
+        "summary": "Statement",
+        "operationId": "statement_v1_accounts__account_id__statement_get",
+        "parameters": [
+          {
+            "name": "account_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "title": "Account Id"
+            }
+          },
+          {
+            "name": "X-Holder",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "X-Holder"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StatementResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "The X-Holder is not the account's holder: access_denied",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The account does not exist: account_not_found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Invalid input (invalid_amount, validation_error) or a broken business rule (insufficient_funds, same_account_transfer, unsupported_currency)",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Unexpected server error: internal_error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AccountResponse": {
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Id"
+          },
+          "holder": {
+            "type": "string",
+            "title": "Holder"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "holder"
+        ],
+        "title": "AccountResponse"
+      },
+      "BalanceResponse": {
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Account Id"
+          },
+          "balance_cents": {
+            "type": "integer",
+            "title": "Balance Cents"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          }
+        },
+        "type": "object",
+        "required": [
+          "account_id",
+          "balance_cents",
+          "currency"
+        ],
+        "title": "BalanceResponse"
+      },
+      "DepositRequest": {
+        "properties": {
+          "amount_cents": {
+            "type": "integer",
+            "maximum": 9.223372036854776e+18,
+            "exclusiveMinimum": 0.0,
+            "title": "Amount Cents"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency",
+            "default": "SGD"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "amount_cents"
+        ],
+        "title": "DepositRequest"
+      },
+      "ErrorResponse": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code",
+            "examples": [
+              "insufficient_funds"
+            ]
+          },
+          "message": {
+            "type": "string",
+            "title": "Message",
+            "examples": [
+              "Account 7c1e4b2a-... has 10000, cannot transfer 10001"
+            ]
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "message"
+        ],
+        "title": "ErrorResponse",
+        "description": "The body of every error response; see app/api/errors.py."
+      },
+      "OpenAccountRequest": {
+        "properties": {
+          "holder": {
+            "type": "string",
+            "minLength": 1,
+            "title": "Holder"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "holder"
+        ],
+        "title": "OpenAccountRequest"
+      },
+      "StatementLineResponse": {
+        "properties": {
+          "transfer_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Transfer Id"
+          },
+          "amount_cents": {
+            "type": "integer",
+            "title": "Amount Cents"
+          },
+          "balance_after_cents": {
+            "type": "integer",
+            "title": "Balance After Cents"
+          }
+        },
+        "type": "object",
+        "required": [
+          "transfer_id",
+          "amount_cents",
+          "balance_after_cents"
+        ],
+        "title": "StatementLineResponse"
+      },
+      "StatementResponse": {
+        "properties": {
+          "account_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Account Id"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/StatementLineResponse"
+            },
+            "type": "array",
+            "title": "Lines"
+          }
+        },
+        "type": "object",
+        "required": [
+          "account_id",
+          "currency",
+          "lines"
+        ],
+        "title": "StatementResponse"
+      },
+      "TransferRequest": {
+        "properties": {
+          "from_account_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "From Account Id"
+          },
+          "to_account_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "To Account Id"
+          },
+          "amount_cents": {
+            "type": "integer",
+            "maximum": 9.223372036854776e+18,
+            "exclusiveMinimum": 0.0,
+            "title": "Amount Cents"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency",
+            "default": "SGD"
+          },
+          "idempotency_key": {
+            "anyOf": [
+              {
+                "type": "string",
+                "minLength": 1
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Idempotency Key"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "from_account_id",
+          "to_account_id",
+          "amount_cents"
+        ],
+        "title": "TransferRequest"
+      },
+      "TransferResponse": {
+        "properties": {
+          "transfer_id": {
+            "type": "string",
+            "format": "uuid",
+            "title": "Transfer Id"
+          }
+        },
+        "type": "object",
+        "required": [
+          "transfer_id"
+        ],
+        "title": "TransferResponse"
+      }
+    }
+  }
+}

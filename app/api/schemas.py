@@ -39,6 +39,13 @@ class TransferRequest(RequestModel):
     idempotency_key: str | None = Field(default=None, min_length=1)
 
 
+class ErrorResponse(BaseModel):
+    """The body of every error response; see app/api/errors.py."""
+
+    code: str = Field(examples=["insufficient_funds"])
+    message: str = Field(examples=["Account 7c1e4b2a-... has 10000, cannot transfer 10001"])
+
+
 class AccountResponse(BaseModel):
     id: UUID
     holder: str
