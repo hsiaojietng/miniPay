@@ -8,5 +8,7 @@ services:
     ports:
       - '5432:5432'
     volumes:
-      # Runs only when the database is empty, i.e. on a freshly created container.
-      - ./docs/schema.sql:/docker-entrypoint-initdb.d/schema.sql:ro
+      # Runs only when the database is empty, i.e. on a freshly created container,
+      # in filename order: the base schema first, then each migration.
+      - ./docs/schema.sql:/docker-entrypoint-initdb.d/001_schema.sql:ro
+      - ./docs/migrations/002_balance.sql:/docker-entrypoint-initdb.d/002_balance.sql:ro

@@ -25,23 +25,23 @@ class TransferRow:
 
 # Accounts
 
-def insert_account(conn, owner_name, currency="SGD"):
+def insert_account(conn, owner_name, currency="SGD", allow_negative=False):
     account_id = uuid.uuid4()
     conn.execute(
-        "INSERT INTO accounts (id, owner_name, currency) VALUES (%s, %s, %s)",
-        (account_id, owner_name, currency),
+        "INSERT INTO accounts (id, owner_name, currency, allow_negative) VALUES (%s, %s, %s, %s)",
+        (account_id, owner_name, currency, allow_negative),
     )
     return str(account_id)
 
 
-def get_or_insert_account(conn, owner_name, currency="SGD"):
+def get_or_insert_account(conn, owner_name, currency="SGD", allow_negative=False):
     # ON CONFLICT relies on accounts.owner_name being UNIQUE, so concurrent callers share one row.
     conn.execute(
         """
-        INSERT INTO accounts (id, owner_name, currency) VALUES (%s, %s, %s)
+        INSERT INTO accounts (id, owner_name, currency, allow_negative) VALUES (%s, %s, %s, %s)
         ON CONFLICT (owner_name) DO NOTHING
         """,
-        (uuid.uuid4(), owner_name, currency),
+        (uuid.uuid4(), owner_name, currency, allow_negative),
     )
     return get_account_by_owner(conn, owner_name)
 
@@ -114,10 +114,23 @@ def update_transfer_status(conn, transfer_id, status):
 # Ledger entries
 
 def insert_entries(conn, entries):
+    """Write ledger entries and move each account's cached balance by the same amounts.
+
+    Both happen on the caller's connection, so they commit or roll back together. The
+    balance_not_negative constraint rejects the UPDATE if an ordinary account would go below zero.
+    """
     with conn.cursor() as cur:
         cur.executemany(
             "INSERT INTO ledger_entries (transfer_id, account_id, amount_cents) VALUES (%s, %s, %s)",
             [(e.transfer_id, e.account_id, e.amount) for e in entries],
+        )
+        change_by_account = {}
+        for e in entries:
+            change_by_account[str(e.account_id)] = change_by_account.get(str(e.account_id), 0) + e.amount
+        # Sorted, like lock_accounts, so two writers touching the same accounts cannot deadlock.
+        cur.executemany(
+            "UPDATE accounts SET balance_cents = balance_cents + %s WHERE id = %s",
+            [(change, account_id) for account_id, change in sorted(change_by_account.items())],
         )
 
 

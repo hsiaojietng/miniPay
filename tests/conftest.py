@@ -22,13 +22,15 @@ from fastapi.testclient import TestClient  # noqa: E402
 
 from app.main import app  # noqa: E402
 
-SCHEMA = Path(__file__).resolve().parent.parent / "docs" / "schema.sql"
+DOCS = Path(__file__).resolve().parent.parent / "docs"
+SCHEMA = DOCS / "schema.sql"
+MIGRATIONS = sorted((DOCS / "migrations").glob("*.sql"))  # applied in order after the schema
 TABLES = "ledger_entries, transfers, accounts"
 
 
 @pytest.fixture(scope="session")
 def database():
-    """Drop and recreate the test database from docs/schema.sql, so it always matches the schema file."""
+    """Drop and recreate the test database from docs/schema.sql plus docs/migrations, so it always matches them."""
     name = conninfo_to_dict(TEST_DATABASE_URL)["dbname"]
     if not name.endswith("_test"):
         pytest.exit(f"Refusing to recreate {name!r}: the test database name must end in _test")
@@ -42,6 +44,8 @@ def database():
 
     with psycopg.connect(TEST_DATABASE_URL, autocommit=True) as setup:
         setup.execute(SCHEMA.read_text())
+        for migration in MIGRATIONS:
+            setup.execute(migration.read_text())
     return TEST_DATABASE_URL
 
 

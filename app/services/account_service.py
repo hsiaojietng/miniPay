@@ -38,7 +38,7 @@ def deposit(conn, account_id, amount, currency=CURRENCY):
 
     with conn.transaction():
         check_account_exists(conn, account_id)
-        cash_id = repo.get_or_insert_account(conn, CASH_HOLDER).id
+        cash_id = repo.get_or_insert_account(conn, CASH_HOLDER, allow_negative=True).id
         check_self_transfer(cash_id, account_id)
 
         transfer_id = repo.insert_transfer(conn, cash_id, account_id, amount, COMPLETED)

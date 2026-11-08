@@ -22,7 +22,7 @@ from app.services.transfer_service import transfer
 
 @pytest.fixture
 def cash(conn):
-    return repo.insert_account(conn, f"CASH-{uuid.uuid4()}")
+    return repo.insert_account(conn, f"CASH-{uuid.uuid4()}", allow_negative=True)
 
 
 def _open_with_balance(conn, cash, owner, amount):
